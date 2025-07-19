@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware";
+import { protect } from "../middleware/authMiddleware.js";
 import { getUserData, storeRecentSearchedCities } from "../controllers/userController";
 
 const userRouter=express.Router();
