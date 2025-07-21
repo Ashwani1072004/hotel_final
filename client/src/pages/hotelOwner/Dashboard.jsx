@@ -1,9 +1,42 @@
-import React, { useState } from 'react';
-import { dashboardDummyData, assets } from '../../assets/assets';
+import React, { useEffect, useState } from 'react';
+import { assets } from '../../assets/assets';
 import Title from '../../components/Title'; 
+import { useAppContext } from '../../context/AppContext';
 
 const Dashboard = () => {
-  const [dashboardData, setDashboardData] = useState(dashboardDummyData);
+  const { currency, user, getToken, toast, axios } = useAppContext();
+
+const [dashboardData, setDashboardData] = useState({
+    bookings: [],
+    totalBookings: 0,
+    totalRevenue: 0,
+})
+
+const fetchDashboardData = async () => {
+    try {
+        const { data } = await axios.get('/api/bookings/hotel', { headers: { Authorization: `Bearer ${await getToken()}` } })
+        if (data.success) {
+            setDashboardData(data.dashboardData)
+        }
+        else{
+          toast.error(data.message)
+        }
+    } catch (error) {
+toast.error(error.message)
+    }
+}
+
+
+useEffect(()=>{
+  if(user){
+    fetchDashboardData();
+  }
+},[user])
+
+
+
+
+
 
   return (
     <div>
@@ -29,7 +62,7 @@ const Dashboard = () => {
           <img src={assets.totalRevenueIcon} alt="" className='max-sm:hidden h-10' />
           <div className='flex flex-col sm:ml-4 font-medium'>
             <p className='text-blue-500 text-lg'>Total Revenue</p>
-            <p className='text-neutral-400 text-base'>Rs. {dashboardData.totalRevenue}</p>
+            <p className='text-neutral-400 text-base'>{currency}{dashboardData.totalRevenue}</p>
           </div>
         </div>
       </div>
@@ -59,7 +92,7 @@ const Dashboard = () => {
       </td>
 
       <td className='py-3 px-4 text-gray-700 border-t border-gray-300 text-center'>
-        Rs. {item.totalPrice}
+        {currency} {item.totalPrice}
       </td>
 <td className='py-3 px-4 border-t border-gray-300 flex'>
   <button className={`py-1 px-3 text-xs rounded-full mx-auto ${
