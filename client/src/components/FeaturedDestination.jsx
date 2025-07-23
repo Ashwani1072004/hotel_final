@@ -20,7 +20,7 @@ const FeaturedDestination = () => {
       {/* Cards Section */}
       <div className="flex flex-wrap items-center justify-center gap-6 mt-10">
         {rooms.slice(0, 4).map((room, index) => (
-          <HotelCard key={room.id} room={room} index={index} />
+          <HotelCard key={room._id} room={room} index={index} />
         ))}
       </div>
 
