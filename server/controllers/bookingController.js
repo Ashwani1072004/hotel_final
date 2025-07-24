@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
-import stripe from "stripe";
+import Stripe from "stripe"; 
+
 // Function to Check Availability of Room
 const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
   try {
@@ -19,7 +20,6 @@ const checkAvailability = async ({ checkInDate, checkOutDate, room }) => {
   }
 };
 
-// API to check availability of room
 // POST /api/bookings/check-availability
 export const checkAvailabilityAPI = async (req, res) => {
   try {
@@ -31,22 +31,19 @@ export const checkAvailabilityAPI = async (req, res) => {
   }
 };
 
-// API to create a new booking
 // POST /api/bookings/book
 export const createBooking = async (req, res) => {
   try {
     const { room, checkInDate, checkOutDate, guests } = req.body;
     const user = req.user._id;
 
-    // Before Booking Check Availability
+    // Check availability before booking
     const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
-
     if (!isAvailable) {
       return res.json({ success: false, message: "Room is not available" });
     }
 
     const roomData = await Room.findById(room).populate("hotel");
-
     if (!roomData) {
       return res.json({ success: false, message: "Room not found" });
     }
@@ -68,14 +65,13 @@ export const createBooking = async (req, res) => {
       totalPrice,
     });
 
-    res.json({ success: true, message: "Booking created successfully" });
+    res.json({ success: true, message: "Booking created successfully", booking });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: "Failed to create booking" });
   }
 };
 
-// API to get all bookings for a user
 // GET /api/bookings/user
 export const getUserBookings = async (req, res) => {
   try {
@@ -87,7 +83,7 @@ export const getUserBookings = async (req, res) => {
   }
 };
 
-// API to get all bookings for a hotel
+// GET /api/bookings/hotel
 export const getHotelBookings = async (req, res) => {
   try {
     const hotel = await Hotel.findOne({ owner: req.auth.userId });
@@ -108,45 +104,41 @@ export const getHotelBookings = async (req, res) => {
   }
 };
 
-
-
+// POST /api/bookings/stripe-payment
 export const stripePayment = async (req, res) => {
   try {
     const { bookingId } = req.body;
-
     const booking = await Booking.findById(bookingId);
-    const roomData = await Room.findById(booking.room).populate('hotel');
+    const roomData = await Room.findById(booking.room).populate("hotel");
     const totalPrice = booking.totalPrice;
     const { origin } = req.headers;
 
-const stripeInstance = new stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const line_items = [
-  {
-    price_data: {
-      currency: "usd",
-      product_data: {
-        name: roomData.hotel.name,
+    const line_items = [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: roomData.hotel.name,
+          },
+          unit_amount: totalPrice * 100,
+        },
+        quantity: 1,
       },
-      unit_amount: totalPrice * 100
-    },
-    quantity: 1,
-  }
-]
+    ];
 
-// Create Checkout Session
-const session = await stripeInstance.checkout.sessions.create({
-  line_items,
-  mode: "payment",
-  success_url: `${origin}/loader/my-bookings`,
-  cancel_url: `${origin}/my-bookings`,
-  metadata: {
-    bookingId,
-  }
-})
-res.json({success: true, url: session.url})
+    const session = await stripe.checkout.sessions.create({
+      line_items,
+      mode: "payment",
+      success_url: `${origin}/loader/my-bookings`,
+      cancel_url: `${origin}/my-bookings`,
+      metadata: { bookingId },
+    });
 
-} catch (error) {
-  res.json({success: false, message: "Payment Failed"})
-}
-}
+    res.json({ success: true, url: session.url });
+  } catch (error) {
+    console.error("Stripe Error:", error.message);
+    res.json({ success: false, message: "Payment Failed" });
+  }
+};
