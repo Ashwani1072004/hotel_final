@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import Booking from "../models/Booking";
+import Booking from "../models/Booking.js";
 
 export const stripeWebhooks = async (request, response) => {
   // Stripe Gateway Initialize
